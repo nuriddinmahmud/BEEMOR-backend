@@ -1,0 +1,95 @@
+BEEMOR
+Farg‘ona viloyati tez yordam haydovchilari uchun navigatsiya va adres topish tizimi
+
+1. LOYIHA PASPORTI VA MAQSADLAR
+- Loyiha nomi: BEEMOR — tez yordam haydovchilari uchun navigatsiya va adres topish tizimi.
+- Maqsad: Haydovchi bemorning yashash manzilini ism, familiya va telefon kabi kombinatsion qidiruv orqali tez topishi, xarita nuqtasini ko‘rishi va navigator orqali manzilga yetib borishi.
+- Hudud: Butun Farg‘ona viloyati, tumanlar va punktlar kesimida.
+- Asosiy qiymat: Oddiy navigatorlar ism bo‘yicha uy topa olmaydi. BEEMOR esa oldindan to‘plangan xonadon + yashovchilar reyestriga tayanadi.
+- Kutilayotgan natija: Haydovchining manzilni topish vaqti qisqaradi, qishloq va murakkab adresli hududlarda aniqlik oshadi, boshqaruv uchun statistik ko‘rsatkichlar to‘planadi.
+
+2. MUAMMO BAYONI VA LOYIHA ZARURATI
+- Amaldagi muammo: Farg‘ona viloyatining ko‘plab hududlarida uylar yoki mahalliy adreslash tizimi xaritalarda to‘liq va qulay ko‘rinmaydi. Natijada tez yordam haydovchisi bemorni topishda vaqt yo‘qotadi.
+- Nega bu yechim kerak: 103 operator tizimi alohida bo‘lsa ham, chaqiriq punktdagi haydovchiga kelgach, haydovchi amaliy jihatdan bemorning uyini topishi kerak bo‘ladi. Shu yerda BEEMOR yordam beradi.
+- Asosiy yondashuv: Tizimning kuchi xaritaning o‘zida emas, balki ‘kim qayerda yashaydi’ bazasida. Agentlar xonadon va yashovchilar ma’lumotini GPS bilan bog‘lab kiritadi; driver esa qidiruv orqali shu nuqtani topadi.
+
+3. TIZIM DOIRASI (SCOPE)
+- In-scope: Driver mobil ilovasi, agent ma’lumot kiritish moduli, admin/super-admin panel, backend API, PostgreSQL ma’lumotlar bazasi, qidiruv va navigatsiya integratsiyasi.
+- Out-of-scope: 103 call-center logikasi, shifoxona ichki tizimlari, mavjud tez yordam boshqaruv tizimining to‘liq o‘rnini bosish, real-time dispatcher monitoringi (ushbu bosqichda).
+- Hududiy qamrov: Viloyat → tuman → punkt bo‘yicha ko‘p filialli tuzilma.
+- Kelajak kengaytmalari: Offline rejim, WebSocket, ichki navigatsiya, real-time tracking, AI-assisted qidiruv.
+
+4. FOYDALANUVCHI ROLLARI VA MAS’ULIYATLAR
+- Driver: Bemorni qidiradi, bemor kartasini ko‘radi, qo‘ng‘iroq qiladi, route ochadi, statuslarni belgilaydi.
+- Agent: Xonadonlarni joyida aniqlab, GPS nuqtasi va yashovchilar ma’lumotini bazaga kiritadi.
+- Admin: Ma’lumotlarni tekshiradi, foydalanuvchilarni boshqaradi, hududiy statistikalarni ko‘radi.
+- Super Admin: Butun tizimni boshqaradi, rollarni belgilaydi, viloyat bo‘yicha umumiy nazorat va hisobotlarni yuritadi.
+
+5. ASOSIY BIZNES JARAYONLAR
+Driver: login -> combo qidiruv -> natija tanlash -> xarita -> route -> statuslar.
+Agent: login -> xonadon nuqtasi -> household -> residents -> saqlash.
+
+7. FUNKSIONAL TALABLAR
+7.1 Autentifikatsiya va foydalanuvchilar
+  * Telefon/username + parol orqali login.
+  * Rollar asosida menyu va ruxsatlarni cheklash.
+  * Foydalanuvchini faollashtirish/deaktivatsiya qilish.
+7.2 Driver qidiruvi
+  * Combo qidiruv: ism, familiya, telefon, ism+telefon, F.I.Sh.
+  * Qidiruv natijalarini relevance bo‘yicha saralash.
+  * Bir xil ismli natijalarni manzil, tuman yoki boshqa kontekst bilan ajratib ko‘rsatish.
+7.3 Bemor kartasi
+  * Bemorning F.I.Sh., telefoni, manzili va xonadon nuqtasi.
+  * Call tugmasi.
+  * Route tugmasi.
+  * Oxirgi ishlatilgan natijalarni ko‘rish imkoniyati.
+7.4 Navigatsiya
+  * Tashqi navigatorga uzatish: Yandex/Google/OSM asosidagi variant.
+  * Route qurish.
+  * Kelajakda ichki navigatsiyaga o‘tish imkonini qoldirish.
+7.5 Agent moduli
+  * Xonadon nuqtasini belgilash.
+  * Xonadon kartasini yaratish.
+  * Yashovchilarni ko‘p yozuvli tarzda qo‘shish.
+  * Dublikatlarni tekshirishning dastlabki logikasi.
+7.6 Admin funksiyalari
+  * Foydalanuvchilarni boshqarish.
+  * Agent kiritgan ma’lumotlarni ko‘rish va tekshirish.
+  * Statistik ko‘rsatkichlarni ko‘rish.
+  * Xatoliklar va auditlarni ko‘rish.
+7.7 Loglar
+  * Qidiruv tarixi.
+  * Navigatsiya sessiyalari.
+  * Statuslar tarixi.
+  * Audit loglar.
+
+8. NO-FUNKTSIONAL TALABLAR
+- Ishlash tezligi: Qidiruv natijasi ideal sharoitda 1 soniyadan kam, og‘ir sharoitda 3 soniyagacha. Indekslash va optimallashtirilgan qidiruv talab qilinadi.
+- Masshtablilik: 1000+ foydalanuvchi va katta resident bazasiga tayyor bo‘lishi kerak. Viloyat bo‘yicha ma’lumot hajmi katta bo‘lishi mumkin.
+- Ishonchlilik: Xatolar yuz berganda izchil loglash va qayta tiklash ssenariysi bo‘lsin. Server loglari va monitoring zarur.
+- Xavfsizlik: Rollar bo‘yicha ruxsat, audit, autentifikatsiya, parol xeshlash. Tibbiy/yarim maxfiy ma’lumotlar bilan ishlanadi.
+- Kengaytiriluvchanlik: Offline, WebSocket, real-time tracking uchun joy qoldiriladi. Arxitektura modul tarzida bo‘lishi kerak.
+- Moslashuvchanlik: Kattaroq telefonlar va planshetga yaqin ekranlar uchun mos UI. Mobile UX muhim.
+
+14. API RO‘YXATI (DRAFT)
+POST | /auth/login | Tizimga kirish | Barchasi
+GET | /me | Joriy foydalanuvchi | Barchasi
+GET | /households | Xonadonlar ro‘yxati | Admin/Agent
+POST | /households | Xonadon yaratish | Agent/Admin
+PATCH | /households/:id | Xonadon tahriri | Agent/Admin
+GET | /residents/search | Combo qidiruv | Driver/Admin
+POST | /navigation-sessions | Borish sessiyasini boshlash | Driver
+PATCH | /navigation-sessions/:id/status | Statusni yangilash | Driver
+GET | /analytics/overview | Umumiy KPI | Admin/Super Admin
+GET | /audit-logs | Auditlarni ko‘rish | Admin/Super Admin
+
+18. OCHIQ SAVOLLAR
+- Xarita provayderi: Yandex Maps, Google Maps yoki OpenStreetMap?
+- Tizim navigatorni tashqi ilova sifatida ochadimi yoki keyinchalik ichki navigatsiya qilinadimi?
+- Offline ishlash MVP ga kiradimi yoki keyingi bosqichga qoldiriladimi?
+- iOS ilovasi kerakmi yoki dastlab Android yetarlimi?
+- Server infratuzilmasi: lokal, private cloud yoki gibrid?
+- Multi-branch boshqaruvning yakuniy hierarxiyasi qanday bo‘ladi?
+- Audit loglarining minimal va maksimal tarkibi qanday belgilanadi?
+- Resident ma’lumotlarining yangilanish jarayoni kim tomonidan olib boriladi?
+- Agentlar uchun ma’lumot sifati va verifikatsiya bosqichi qanday tashkil qilinadi?

@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  SUPER_ADMIN @map("super_admin")
+  ADMIN       @map("admin")
+  DRIVER      @map("driver")
+  AGENT       @map("agent")
+
+  @@map("user_role")
+}
+
+enum NavigationStatus {
+  STARTED    @map("started")
+  ON_THE_WAY @map("on_the_way")
+  ARRIVED    @map("arrived")
+  COMPLETED  @map("completed")
+
+  @@map("navigation_status")
+}
+
+model User {
+  id                 String              @id @default(cuid())
+  fullName           String              @map("full_name")
+  phone              String              @unique
+  passwordHash       String              @map("password_hash")
+  role               UserRole
+  isActive           Boolean             @default(true) @map("is_active")
+  branchId           String?             @map("branch_id")
+  branch             Branch?             @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  searchLogs         SearchLog[]
+  navigationSessions NavigationSession[]
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  @@index([branchId])
+  @@map("users")
+}
+
+model Region {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  districts District[]
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  @@map("regions")
+}
+
+model District {
+  id         String      @id @default(cuid())
+  name       String
+  regionId   String      @map("region_id")
+  region     Region      @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  branches   Branch[]
+  households Household[]
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+
+  @@unique([regionId, name])
+  @@index([regionId])
+  @@map("districts")
+}
+
+model Branch {
+  id         String      @id @default(cuid())
+  name       String
+  address    String?
+  phone      String?
+  districtId String      @map("district_id")
+  district   District    @relation(fields: [districtId], references: [id], onDelete: Restrict)
+  users      User[]
+  households Household[]
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+
+  @@unique([districtId, name])
+  @@index([districtId])
+  @@map("branches")
+}
+
+model Household {
+  id                 String              @id @default(cuid())
+  address            String
+  cadastralNumber    String?             @unique @map("cadastral_number")
+  landmark           String?
+  latitude           Decimal             @db.Decimal(10, 7)
+  longitude          Decimal             @db.Decimal(10, 7)
+  districtId         String              @map("district_id")
+  branchId           String              @map("branch_id")
+  district           District            @relation(fields: [districtId], references: [id], onDelete: Restrict)
+  branch             Branch              @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  residents          Resident[]
+  searchLogs         SearchLog[]
+  navigationSessions NavigationSession[]
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  @@index([districtId])
+  @@index([branchId])
+  @@index([latitude, longitude])
+  @@map("households")
+}
+
+model Resident {
+  id          String    @id @default(cuid())
+  householdId String    @map("household_id")
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  fullName    String    @map("full_name")
+  phone       String?
+  dateOfBirth DateTime? @db.Date @map("date_of_birth")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([householdId])
+  @@index([phone])
+  @@map("residents")
+}
+
+model SearchLog {
+  id          String    @id @default(cuid())
+  driverId    String    @map("driver_id")
+  driver      User      @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  householdId String?   @map("household_id")
+  household   Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
+  query       String
+  searchedAt  DateTime  @default(now()) @map("searched_at")
+
+  @@index([driverId])
+  @@index([householdId])
+  @@index([searchedAt])
+  @@map("search_logs")
+}
+
+model NavigationSession {
+  id                String           @id @default(cuid())
+  driverId          String           @map("driver_id")
+  driver            User             @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  householdId       String           @map("household_id")
+  household         Household        @relation(fields: [householdId], references: [id], onDelete: Restrict)
+  status            NavigationStatus @default(STARTED)
+  startedAt         DateTime         @default(now()) @map("started_at")
+  arrivedAt         DateTime?        @map("arrived_at")
+  completedAt       DateTime?        @map("completed_at")
+  lastKnownLatitude Decimal?         @db.Decimal(10, 7) @map("last_known_latitude")
+  lastKnownLongitude Decimal?        @db.Decimal(10, 7) @map("last_known_longitude")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  @@index([driverId])
+  @@index([householdId])
+  @@index([status])
+  @@map("navigation_sessions")
+}
