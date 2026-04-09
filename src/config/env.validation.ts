@@ -22,6 +22,18 @@ class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   DATABASE_URL!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  JWT_SECRET!: string;
+
+  @IsOptional()
+  @IsString()
+  JWT_EXPIRES_IN?: string;
+
+  @IsOptional()
+  @IsString()
+  CORS_ORIGIN?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {

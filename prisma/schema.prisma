@@ -4,63 +4,87 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum UserRole {
-  SUPER_ADMIN @map("super_admin")
-  ADMIN       @map("admin")
-  DRIVER      @map("driver")
-  AGENT       @map("agent")
+  SUPER_ADMIN
+  ADMIN
+  DRIVER
+  AGENT
+}
 
-  @@map("user_role")
+enum Gender {
+  MALE
+  FEMALE
+  UNKNOWN
+}
+
+enum DriverWorkStatus {
+  AVAILABLE
+  BUSY
+  OFFLINE
 }
 
 enum NavigationStatus {
-  STARTED    @map("started")
-  ON_THE_WAY @map("on_the_way")
-  ARRIVED    @map("arrived")
-  COMPLETED  @map("completed")
-
-  @@map("navigation_status")
+  STARTED
+  ON_THE_WAY
+  ARRIVED
+  COMPLETED
+  CANCELLED
 }
 
-model User {
-  id                 String              @id @default(cuid())
-  fullName           String              @map("full_name")
-  phone              String              @unique
-  passwordHash       String              @map("password_hash")
-  role               UserRole
-  isActive           Boolean             @default(true) @map("is_active")
-  branchId           String?             @map("branch_id")
-  branch             Branch?             @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  searchLogs         SearchLog[]
-  navigationSessions NavigationSession[]
-  createdAt          DateTime            @default(now()) @map("created_at")
-  updatedAt          DateTime            @updatedAt @map("updated_at")
+enum TripActionStatus {
+  YOLDAMAN
+  YETIB_KELDIM
+  YAKUNLADIM
+  CANCELLED
+}
 
-  @@index([branchId])
-  @@map("users")
+enum NavigatorType {
+  YANDEX
+  GOOGLE
+  INTERNAL
+  UNKNOWN
+}
+
+enum ChangeAction {
+  CREATE
+  UPDATE
+  VERIFY
+  DEACTIVATE
+}
+
+enum AuditEntityType {
+  USER
+  HOUSEHOLD
+  RESIDENT
+  SEARCH
+  NAVIGATION
+  SYSTEM
 }
 
 model Region {
-  id        String     @id @default(cuid())
-  name      String     @unique
-  districts District[]
+  id        Int        @id @default(autoincrement())
+  name      String     @unique @db.VarChar(150)
   createdAt DateTime   @default(now()) @map("created_at")
-  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  districts  District[]
+  households Household[]
 
   @@map("regions")
 }
 
 model District {
-  id         String      @id @default(cuid())
-  name       String
-  regionId   String      @map("region_id")
+  id        Int      @id @default(autoincrement())
+  regionId  Int      @map("region_id")
+  name      String   @db.VarChar(150)
+  createdAt DateTime @default(now()) @map("created_at")
+
   region     Region      @relation(fields: [regionId], references: [id], onDelete: Restrict)
   branches   Branch[]
+  users      User[]
   households Household[]
-  createdAt  DateTime    @default(now()) @map("created_at")
-  updatedAt  DateTime    @updatedAt @map("updated_at")
 
   @@unique([regionId, name])
   @@index([regionId])
@@ -68,92 +92,294 @@ model District {
 }
 
 model Branch {
-  id         String      @id @default(cuid())
-  name       String
-  address    String?
-  phone      String?
-  districtId String      @map("district_id")
-  district   District    @relation(fields: [districtId], references: [id], onDelete: Restrict)
-  users      User[]
-  households Household[]
-  createdAt  DateTime    @default(now()) @map("created_at")
-  updatedAt  DateTime    @updatedAt @map("updated_at")
+  id        Int       @id @default(autoincrement())
+  districtId Int      @map("district_id")
+  name      String    @db.VarChar(200)
+  code      String?   @unique @db.VarChar(50)
+  address   String?   @db.VarChar(300)
+  phone     String?   @db.VarChar(30)
+  latitude  Decimal?  @db.Decimal(10, 7)
+  longitude Decimal?  @db.Decimal(10, 7)
+  createdAt DateTime  @default(now()) @map("created_at")
 
-  @@unique([districtId, name])
+  district            District            @relation(fields: [districtId], references: [id], onDelete: Restrict)
+  users               User[]
+  households          Household[]
+  searchLogs          SearchLog[]
+  driverSearchLogs    DriverSearchLog[]
+  navigationSessions  NavigationSession[]
+
   @@index([districtId])
   @@map("branches")
 }
 
-model Household {
-  id                 String              @id @default(cuid())
-  address            String
-  cadastralNumber    String?             @unique @map("cadastral_number")
-  landmark           String?
-  latitude           Decimal             @db.Decimal(10, 7)
-  longitude          Decimal             @db.Decimal(10, 7)
-  districtId         String              @map("district_id")
-  branchId           String              @map("branch_id")
-  district           District            @relation(fields: [districtId], references: [id], onDelete: Restrict)
-  branch             Branch              @relation(fields: [branchId], references: [id], onDelete: Restrict)
-  residents          Resident[]
-  searchLogs         SearchLog[]
-  navigationSessions NavigationSession[]
-  createdAt          DateTime            @default(now()) @map("created_at")
-  updatedAt          DateTime            @updatedAt @map("updated_at")
+model User {
+  id            Int       @id @default(autoincrement())
+  branchId      Int?      @map("branch_id")
+  districtId    Int?      @map("district_id")
+  firstName     String    @map("first_name") @db.VarChar(100)
+  lastName      String    @map("last_name") @db.VarChar(100)
+  middleName    String?   @map("middle_name") @db.VarChar(100)
+  phone         String?   @unique @db.VarChar(30)
+  username      String    @unique @db.VarChar(80)
+  passwordHash  String    @map("password_hash") @db.VarChar(255)
+  role          UserRole
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
+  branch                     Branch?                 @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  district                   District?               @relation(fields: [districtId], references: [id], onDelete: SetNull)
+
+  createdHouseholds          Household[]             @relation("HouseholdCreatedBy")
+  searchLogs                 SearchLog[]             @relation("SearchLogDriver")
+  driverSearchLogs           DriverSearchLog[]       @relation("DriverSearchLogDriver")
+  navigationSessions         NavigationSession[]     @relation("NavigationSessionDriver")
+  driverDailyStatuses        DriverDailyStatus[]
+  tripStatusLogs             TripStatusLog[]
+  householdChangeLogs        HouseholdChangeLog[]
+  residentChangeLogs         ResidentChangeLog[]
+  auditLogs                  AuditLog[]
+
+  @@index([branchId])
+  @@index([districtId])
+  @@index([role])
+  @@map("users")
+}
+
+model Household {
+  id                BigInt    @id @default(autoincrement())
+  regionId          Int       @map("region_id")
+  districtId        Int       @map("district_id")
+  branchId          Int?      @map("branch_id")
+  createdByAgentId  Int       @map("created_by_agent_id")
+
+  cadastralNumber   String?   @map("cadastral_number") @db.VarChar(100)
+  officialAddress   String    @map("official_address") @db.VarChar(500)
+  houseNumber       String?   @map("house_number") @db.VarChar(50)
+  apartment         String?   @db.VarChar(50)
+  landmark          String?   @db.VarChar(255)
+
+  latitude          Decimal   @db.Decimal(10, 7)
+  longitude         Decimal   @db.Decimal(10, 7)
+
+  isVerified        Boolean   @default(false) @map("is_verified")
+  isActive          Boolean   @default(true) @map("is_active")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  region            Region    @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  district          District  @relation(fields: [districtId], references: [id], onDelete: Restrict)
+  branch            Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  createdByAgent    User      @relation("HouseholdCreatedBy", fields: [createdByAgentId], references: [id], onDelete: Restrict)
+
+  residents               Resident[]
+  searchLogs              SearchLog[]
+  driverSearchLogs        DriverSearchLog[]
+  navigationSessions      NavigationSession[]
+  householdChangeLogs     HouseholdChangeLog[]
+
+  @@index([regionId])
   @@index([districtId])
   @@index([branchId])
+  @@index([createdByAgentId])
   @@index([latitude, longitude])
+  @@index([officialAddress])
   @@map("households")
 }
 
 model Resident {
-  id          String    @id @default(cuid())
-  householdId String    @map("household_id")
-  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  fullName    String    @map("full_name")
-  phone       String?
-  dateOfBirth DateTime? @db.Date @map("date_of_birth")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id                BigInt    @id @default(autoincrement())
+  householdId       BigInt    @map("household_id")
+
+  firstName         String    @map("first_name") @db.VarChar(100)
+  lastName          String    @map("last_name") @db.VarChar(100)
+  middleName        String?   @map("middle_name") @db.VarChar(100)
+  fullName          String?   @map("full_name") @db.VarChar(255)
+  phonePrimary      String?   @map("phone_primary") @db.VarChar(30)
+  phoneSecondary    String?   @map("phone_secondary") @db.VarChar(30)
+  birthDate         DateTime? @map("birth_date") @db.Date
+  gender            Gender    @default(UNKNOWN)
+
+  isActive          Boolean   @default(true) @map("is_active")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  household             Household            @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  searchLogs            SearchLog[]
+  driverSearchLogs      DriverSearchLog[]
+  navigationSessions    NavigationSession[]
+  residentChangeLogs    ResidentChangeLog[]
 
   @@index([householdId])
-  @@index([phone])
+  @@index([firstName])
+  @@index([lastName])
+  @@index([fullName])
+  @@index([phonePrimary])
+  @@index([phoneSecondary])
   @@map("residents")
 }
 
 model SearchLog {
-  id          String    @id @default(cuid())
-  driverId    String    @map("driver_id")
-  driver      User      @relation(fields: [driverId], references: [id], onDelete: Cascade)
-  householdId String?   @map("household_id")
-  household   Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
-  query       String
-  searchedAt  DateTime  @default(now()) @map("searched_at")
+  id           BigInt    @id @default(autoincrement())
+  driverId     Int       @map("driver_id")
+  branchId     Int?      @map("branch_id")
+  queryText    String    @map("query_text") @db.VarChar(255)
+  residentId   BigInt?   @map("resident_id")
+  householdId  BigInt?   @map("household_id")
+  searchedAt   DateTime  @default(now()) @map("searched_at")
+
+  driver       User      @relation("SearchLogDriver", fields: [driverId], references: [id], onDelete: Cascade)
+  branch       Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  resident     Resident? @relation(fields: [residentId], references: [id], onDelete: SetNull)
+  household    Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
 
   @@index([driverId])
+  @@index([branchId])
+  @@index([residentId])
   @@index([householdId])
   @@index([searchedAt])
   @@map("search_logs")
 }
 
-model NavigationSession {
-  id                String           @id @default(cuid())
-  driverId          String           @map("driver_id")
-  driver            User             @relation(fields: [driverId], references: [id], onDelete: Cascade)
-  householdId       String           @map("household_id")
-  household         Household        @relation(fields: [householdId], references: [id], onDelete: Restrict)
-  status            NavigationStatus @default(STARTED)
-  startedAt         DateTime         @default(now()) @map("started_at")
-  arrivedAt         DateTime?        @map("arrived_at")
-  completedAt       DateTime?        @map("completed_at")
-  lastKnownLatitude Decimal?         @db.Decimal(10, 7) @map("last_known_latitude")
-  lastKnownLongitude Decimal?        @db.Decimal(10, 7) @map("last_known_longitude")
-  createdAt         DateTime         @default(now()) @map("created_at")
-  updatedAt         DateTime         @updatedAt @map("updated_at")
+model DriverSearchLog {
+  id             BigInt    @id @default(autoincrement())
+  driverId       Int       @map("driver_id")
+  branchId       Int?      @map("branch_id")
+  searchType     String?   @map("search_type") @db.VarChar(50)
+  firstName      String?   @map("first_name") @db.VarChar(100)
+  lastName       String?   @map("last_name") @db.VarChar(100)
+  middleName     String?   @map("middle_name") @db.VarChar(100)
+  phone          String?   @db.VarChar(30)
+  queryText      String?   @map("query_text") @db.VarChar(255)
+  resultCount    Int       @default(0) @map("result_count")
+  selectedResidentId  BigInt? @map("selected_resident_id")
+  selectedHouseholdId BigInt? @map("selected_household_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  driver         User      @relation("DriverSearchLogDriver", fields: [driverId], references: [id], onDelete: Cascade)
+  branch         Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  selectedResident  Resident?  @relation(fields: [selectedResidentId], references: [id], onDelete: SetNull)
+  selectedHousehold Household? @relation(fields: [selectedHouseholdId], references: [id], onDelete: SetNull)
 
   @@index([driverId])
+  @@index([branchId])
+  @@index([phone])
+  @@index([firstName, lastName])
+  @@index([createdAt])
+  @@map("driver_search_logs")
+}
+
+model NavigationSession {
+  id             BigInt           @id @default(autoincrement())
+  driverId       Int              @map("driver_id")
+  branchId       Int?             @map("branch_id")
+  residentId     BigInt?          @map("resident_id")
+  householdId    BigInt           @map("household_id")
+  startedAt      DateTime?        @map("started_at")
+  arrivedAt      DateTime?        @map("arrived_at")
+  finishedAt     DateTime?        @map("finished_at")
+  status         NavigationStatus @default(STARTED)
+  navigatorType  NavigatorType    @default(UNKNOWN) @map("navigator_type")
+  createdAt      DateTime         @default(now()) @map("created_at")
+
+  driver         User             @relation("NavigationSessionDriver", fields: [driverId], references: [id], onDelete: Cascade)
+  branch         Branch?          @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  resident       Resident?        @relation(fields: [residentId], references: [id], onDelete: SetNull)
+  household      Household        @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  tripStatusLogs TripStatusLog[]
+
+  @@index([driverId])
+  @@index([branchId])
+  @@index([residentId])
   @@index([householdId])
   @@index([status])
+  @@index([createdAt])
   @@map("navigation_sessions")
+}
+
+model DriverDailyStatus {
+  id         BigInt           @id @default(autoincrement())
+  driverId   Int              @map("driver_id")
+  workDate   DateTime         @map("work_date") @db.Date
+  status     DriverWorkStatus
+  updatedAt  DateTime         @default(now()) @map("updated_at")
+
+  driver     User             @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@unique([driverId, workDate])
+  @@index([status])
+  @@map("driver_daily_statuses")
+}
+
+model TripStatusLog {
+  id                   BigInt           @id @default(autoincrement())
+  navigationSessionId  BigInt           @map("navigation_session_id")
+  driverId             Int              @map("driver_id")
+  status               TripActionStatus
+  note                 String?          @db.Text
+  createdAt            DateTime         @default(now()) @map("created_at")
+
+  navigationSession    NavigationSession @relation(fields: [navigationSessionId], references: [id], onDelete: Cascade)
+  driver               User              @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([navigationSessionId])
+  @@index([driverId])
+  @@index([createdAt])
+  @@map("trip_status_logs")
+}
+
+model HouseholdChangeLog {
+  id               BigInt       @id @default(autoincrement())
+  householdId      BigInt       @map("household_id")
+  changedByUserId  Int          @map("changed_by_user_id")
+  action           ChangeAction
+  oldData          Json?        @map("old_data")
+  newData          Json?        @map("new_data")
+  createdAt        DateTime     @default(now()) @map("created_at")
+
+  household        Household    @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  changedByUser    User         @relation(fields: [changedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+  @@index([changedByUserId])
+  @@index([createdAt])
+  @@map("household_change_logs")
+}
+
+model ResidentChangeLog {
+  id               BigInt       @id @default(autoincrement())
+  residentId       BigInt       @map("resident_id")
+  changedByUserId  Int          @map("changed_by_user_id")
+  action           ChangeAction
+  oldData          Json?        @map("old_data")
+  newData          Json?        @map("new_data")
+  createdAt        DateTime     @default(now()) @map("created_at")
+
+  resident         Resident     @relation(fields: [residentId], references: [id], onDelete: Cascade)
+  changedByUser    User         @relation(fields: [changedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([residentId])
+  @@index([changedByUserId])
+  @@index([createdAt])
+  @@map("resident_change_logs")
+}
+
+model AuditLog {
+  id          BigInt          @id @default(autoincrement())
+  userId      Int             @map("user_id")
+  action      String          @db.VarChar(120)
+  entityType  AuditEntityType @map("entity_type")
+  entityId    BigInt?         @map("entity_id")
+  ipAddress   String?         @map("ip_address") @db.VarChar(64)
+  userAgent   String?         @map("user_agent") @db.VarChar(500)
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
 }
